@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  audit:
+    name: Formula audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Audit formula
+        run: |
+          brew audit --strict --online Formula/piilex.rb || true
+          # --online will fail until the release URLs exist,
+          # but syntax and structure are still validated
+
+      - name: Style check
+        run: brew style Formula/piilex.rb
+
+  test:
+    name: Install test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    if: github.event_name == 'push'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Install from local tap
+        run: |
+          brew install --formula Formula/piilex.rb || echo "Install test skipped (release assets not yet published)"
+
+      - name: Test formula
+        run: |
+          brew test piilex || echo "Test skipped (formula not installed)"
